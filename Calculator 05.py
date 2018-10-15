@@ -2,14 +2,16 @@
 #
 # EOF (end-of-file) token is used to indicate that
 # there is no more input left for lexical analysis
-INTEGER, MUL, DIV, PLUS, MINUS, EOF = 'INTEGER', 'MUL', 'DIV', 'PLUS', 'MINUS', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, EOF = (
+    'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'EOF'
+)
 
 
 class Token(object):
     def __init__(self, type, value):
-        # token type: INTEGER, MUL, DIV, or EOF
+        # token type: INTEGER, PLUS, MINUS, MUL, DIV, or EOF
         self.type = type
-        # token value: non-negative integer value, '*', '/', or None
+        # token value: non-negative integer value, '+', '-', '*', '/', or None
         self.value = value
 
     def __str__(self):
@@ -17,6 +19,7 @@ class Token(object):
 
         Examples:
             Token(INTEGER, 3)
+            Token(PLUS, '+')
             Token(MUL, '*')
         """
         return 'Token({type}, {value})'.format(
@@ -74,14 +77,6 @@ class Lexer(object):
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
 
-            if self.current_char == '*':
-                self.advance()
-                return Token(MUL, '*')
-
-            if self.current_char == '/':
-                self.advance()
-                return Token(DIV, '/')
-
             if self.current_char == '+':
                 self.advance()
                 return Token(PLUS, '+')
@@ -89,6 +84,14 @@ class Lexer(object):
             if self.current_char == '-':
                 self.advance()
                 return Token(MINUS, '-')
+
+            if self.current_char == '*':
+                self.advance()
+                return Token(MUL, '*')
+
+            if self.current_char == '/':
+                self.advance()
+                return Token(DIV, '/')
 
             self.error()
 
@@ -115,21 +118,16 @@ class Interpreter(object):
             self.error()
 
     def factor(self):
-        """Return an INTEGER token value.
-
-        factor : INTEGER
-        """
+        """factor : INTEGER"""
         token = self.current_token
         self.eat(INTEGER)
         return token.value
 
     def term(self):
-        """Return a factor token value.
-
-        term : factor
-        """
+        """term : factor ((MUL | DIV) factor)*"""
         result = self.factor()
-        while self.current_token.type in (MUL, DIV, PLUS, MINUS):
+
+        while self.current_token.type in (MUL, DIV):
             token = self.current_token
             if token.type == MUL:
                 self.eat(MUL)
@@ -137,12 +135,17 @@ class Interpreter(object):
             elif token.type == DIV:
                 self.eat(DIV)
                 result = result / self.factor()
+
         return result
 
     def expr(self):
         """Arithmetic expression parser / interpreter.
 
-        expr   : factor ((MUL | DIV) factor)*
+        calc>  14 + 2 * 3 - 6 / 2
+        17
+
+        expr   : term ((PLUS | MINUS) term)*
+        term   : factor ((MUL | DIV) factor)*
         factor : INTEGER
         """
         result = self.term()
@@ -164,7 +167,7 @@ def main():
         try:
             # To run under Python3 replace 'raw_input' call
             # with 'input'
-            text = input('calc> ')
+            text = raw_input('calc> ')
         except EOFError:
             break
         if not text:
